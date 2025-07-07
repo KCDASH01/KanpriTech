@@ -43,33 +43,124 @@
     <div id="app-root"></div>
 
     <script type="text/babel">
-  const App = () => {
-    const [data, setData] = React.useState(null);
+        const { useState, useEffect } = React;
 
-    React.useEffect(() => {
-      // Hide splash screen after 2 seconds
-      setTimeout(() => {
-        document.getElementById('splash').style.display = 'none';
-      }, 2000);
+        // Replace with your deployed Google Apps Script Web App URL
+        const APPS_SCRIPT_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyX75QrqOsjP_EHv6nZ4wOcoyls7rl--DEQGTsdG5PujhQTxTiyA71IoGfoZ6xrUysY/exec';
 
-      // Fetch data from Google Apps Script
-      fetch('https://script.google.com/macros/s/AKfycbzUyZO9g03tCe4nzS5V3qF-XwYccg5sBzIpBLQs8r8ceuhLsgwlWpgYmtmB4C1yYwuG/exec')
-        .then(response => response.json())
-        .then(data => setData(data))
-        .catch(error => console.error('Error:', error));
-    }, []);
+        const Invoices = () => {
+            const [invoices, setInvoices] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
 
-    return (
-      <div>
-        <div id="splash" className="flex items-center justify-center h-screen bg-gray-200">
-          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA... [base64 logo]" alt="KanpriTech Logo" className="w-1/3" />
-          <p className="text-xl font-bold mt-2">Powered by KanpriTech</p>
-        </div>
-        {data && <div>{JSON.stringify(data)}</div>}
-      </div>
-    );
-  };
-  ReactDOM.render(<App />, document.getElementById('root'));
-</script>
+            useEffect(() => {
+                const fetchInvoices = async () => {
+                    try {
+                        const response = await fetch(`${APPS_SCRIPT_WEB_APP_URL}?action=read&sheet=Invoices`);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        const data = await response.json();
+                        if (data.success === false) {
+                            throw new Error(data.message || 'Failed to fetch invoices.');
+                        }
+                        setInvoices(data);
+                    } catch (err) {
+                        setError(err.message);
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+
+                fetchInvoices();
+            }, []);
+
+            if (loading) {
+                return <p className="text-center text-gray-600">Loading invoices...</p>;
+            }
+
+            if (error) {
+                return <p className="text-center text-red-600">Error: {error}</p>;
+            }
+
+            return (
+                <div className="bg-white shadow-md rounded-lg p-4">
+                    <h3 className="text-xl font-semibold mb-4">Your Invoices</h3>
+                    {invoices.length === 0 ? (
+                        <p className="text-gray-600">No invoices found. Start by creating one!</p>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice ID</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Name</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {invoices.map((invoice, index) => (
+                                        <tr key={index}>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{invoice['Invoice ID']}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice['Customer Name']}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${invoice['Amount'] ? invoice['Amount'].toFixed(2) : '0.00'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{invoice['Due Date']}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${invoice.Status === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                    {invoice.Status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    setLoading(false);
+                    document.getElementById('splash-screen').classList.add('hidden');
+                    document.getElementById('app-root').style.display = 'block';
+                }, 2000);
+                return () => clearTimeout(timer);
+            }, []);
+
+            if (loading) {
+                return null; // Render nothing while splash screen is active
+            }
+
+            return (
+                <div className="min-h-screen bg-gray-100">
+                    <header className="bg-white shadow-sm p-4 flex justify-between items-center">
+                        <h1 className="text-2xl font-bold text-gray-800">KanpriTech Invoice App</h1>
+                        <nav>
+                            <ul className="flex space-x-4">
+                                <li><a href="#" className="text-blue-600 hover:text-blue-800">Invoices</a></li>
+                                <li><a href="#" className="text-blue-600 hover:text-blue-800">Customers</a></li>
+                                <li><a href="#" className="text-blue-600 hover:text-blue-800">Expenses</a></li>
+                                <li><a href="#" className="text-blue-600 hover:text-blue-800">Time Tracking</a></li>
+                                <li><a href="#" className="text-blue-600 hover:text-blue-800">Reports</a></li>
+                            </ul>
+                        </nav>
+                    </header>
+                    <main className="p-4">
+                        <h2 className="text-xl font-semibold text-gray-700 mb-4">Welcome to your Invoice Dashboard!</h2>
+                        <Invoices />
+                    </main>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('app-root'));
+    </script>
 </body>
 </html>
